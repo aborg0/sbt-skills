@@ -12,7 +12,7 @@ import java.time.Instant
 class SkillRegistrySpec extends AnyFlatSpec with Matchers {
 
   private def withTemporaryRegistry[A](test: SkillRegistry => A): A = {
-    val directory = Files.createTempDirectory("skill-registry")
+    val directory    = Files.createTempDirectory("skill-registry")
     val registryFile = directory.resolve("registry.json")
     try {
       test(new SkillRegistry(registryFile.toFile, Logger.Null))
@@ -31,7 +31,7 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
   }
 
   "SkillRegistry.addOrUpdateSource" should "add new source to registry" in {
-    val data = Data(Seq(), Seq())
+    val data   = Data(Seq(), Seq())
     val source = SkillSource("test", "https://github.com/test/repo.git", "main")
 
     withTemporaryRegistry { registry =>
@@ -42,7 +42,7 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
   }
 
   "SkillRegistry.addOrUpdateSkills" should "add skills to registry" in {
-    val now = Instant.now()
+    val now   = Instant.now()
     val skill = SkillReference(
       id = "test-skill",
       sourceId = "test-source",
@@ -54,7 +54,7 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
       lastFetched = now,
       customized = false
     )
-    
+
     val data = Data(Seq(), Seq())
 
     withTemporaryRegistry { registry =>
@@ -65,7 +65,7 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "replace an existing skill when its effective harnesses change" in {
-    val now = Instant.now()
+    val now           = Instant.now()
     val existingSkill = SkillReference(
       id = "test-skill",
       sourceId = "test-source",
@@ -89,7 +89,7 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
   }
 
   "SkillRegistry.getSkillsForHarness" should "filter skills by harness" in {
-    val now = Instant.now()
+    val now    = Instant.now()
     val skill1 = SkillReference(
       id = "skill1",
       sourceId = "source1",
@@ -110,7 +110,7 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
       effectiveHarnesses = Seq("claude"),
       lastFetched = now
     )
-    
+
     val data = Data(Seq(), Seq(skill1, skill2))
 
     withTemporaryRegistry { registry =>

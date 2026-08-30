@@ -9,19 +9,20 @@ import java.time.Instant
 
 class HarnessGeneratorsSpec extends AnyFlatSpec with Matchers {
 
-  "InstructionsFileGenerator" should "produce deterministic output for reordered skills and harnesses" in {
-    val now = Instant.now()
-    val copilotSkill = skill("copilot-skill", Seq("copilot"), now)
-    val sharedSkill = skill("shared-skill", Seq("copilot", "claude"), now)
-    val reorderedSharedSkill = sharedSkill.copy(effectiveHarnesses = Seq("claude", "copilot"))
-    val generator = new InstructionsFileGenerator(Logger.Null)
+  "InstructionsFileGenerator" should
+    "produce deterministic output for reordered skills and harnesses" in {
+      val now                  = Instant.now()
+      val copilotSkill         = skill("copilot-skill", Seq("copilot"), now)
+      val sharedSkill          = skill("shared-skill", Seq("copilot", "claude"), now)
+      val reorderedSharedSkill = sharedSkill.copy(effectiveHarnesses = Seq("claude", "copilot"))
+      val generator            = new InstructionsFileGenerator(Logger.Null)
 
-    val first = generator.generate(Seq(copilotSkill, sharedSkill), Map.empty)
-    val second = generator.generate(Seq(reorderedSharedSkill, copilotSkill), Map.empty)
+      val first  = generator.generate(Seq(copilotSkill, sharedSkill), Map.empty)
+      val second = generator.generate(Seq(reorderedSharedSkill, copilotSkill), Map.empty)
 
-    second shouldBe first
-    first.indexOf("## Claude & Copilot") should be < first.indexOf("## Copilot\n")
-  }
+      second shouldBe first
+      first.indexOf("## Claude & Copilot") should be < first.indexOf("## Copilot\n")
+    }
 
   private def skill(id: String, harnesses: Seq[String], now: Instant): SkillReference = {
     SkillReference(

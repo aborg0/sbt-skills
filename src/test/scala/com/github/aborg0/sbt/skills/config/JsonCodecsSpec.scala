@@ -26,7 +26,7 @@ class JsonCodecsSpec extends AnyFlatSpec with Matchers {
     import JsonCodecs._
     val file = Files.createTempFile("json-codecs", ".txt").toFile
     try {
-      val json = file.getAbsolutePath.asJson
+      val json   = file.getAbsolutePath.asJson
       val result = json.as[File].toOption.map(_.getAbsolutePath)
       result should contain(file.getAbsolutePath)
     } finally {
@@ -36,15 +36,15 @@ class JsonCodecsSpec extends AnyFlatSpec with Matchers {
 
   "SkillSourceEncoder/Decoder" should "round-trip correctly" in {
     import JsonCodecs._
-    val source = SkillSource("test", "https://github.com/test/repo.git", "main")
-    val json = source.asJson
+    val source  = SkillSource("test", "https://github.com/test/repo.git", "main")
+    val json    = source.asJson
     val decoded = json.as[SkillSource].toOption
     decoded should contain(source)
   }
 
   "SkillReferenceEncoder/Decoder" should "round-trip correctly" in {
     import JsonCodecs._
-    val now = Instant.now()
+    val now   = Instant.now()
     val skill = SkillReference(
       id = "test-skill",
       sourceId = "test-source",
@@ -56,7 +56,7 @@ class JsonCodecsSpec extends AnyFlatSpec with Matchers {
       lastFetched = now,
       customized = false
     )
-    val json = skill.asJson
+    val json    = skill.asJson
     val decoded = json.as[SkillReference].toOption
     decoded should contain(skill)
   }

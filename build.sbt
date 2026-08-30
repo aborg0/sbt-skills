@@ -1,5 +1,4 @@
-
-name := """sbt-skills"""
+name    := """sbt-skills"""
 version := "0.1-SNAPSHOT"
 
 sbtPlugin := true
@@ -7,7 +6,7 @@ sbtPlugin := true
 // Cross-build the plugin for both sbt 1.x (Scala 2.12) and sbt 2.x (Scala 3),
 // following the pattern from https://github.com/sbt/sbt2-compat
 def scala212 = "2.12.20"
-def scala3 = "3.8.4"
+def scala3   = "3.8.4"
 scalaVersion := {
   if (sbtVersion.value.startsWith("2.")) scala3 else scala212
 }
@@ -47,12 +46,12 @@ Global / excludeLintKeys += HarnessIntegration / scalaSource
 libraryDependencies ++= Seq(
   // Git operations
   "org.eclipse.jgit" % "org.eclipse.jgit" % "6.7.0.202309050840-r",
-  
+
   // JSON parsing and serialization
-  "io.circe" %% "circe-core" % "0.14.6",
-  "io.circe" %% "circe-parser" % "0.14.6",
+  "io.circe" %% "circe-core"    % "0.14.6",
+  "io.circe" %% "circe-parser"  % "0.14.6",
   "io.circe" %% "circe-generic" % "0.14.6",
-  
+
   // Testing
   "org.scalatest" %% "scalatest" % "3.2.17" % Test
 )
@@ -67,9 +66,9 @@ addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.2.0")
 
 inThisBuild(List(
   organization := "com.github.aborg0",
-  homepage := Some(url("https://github.com/aborg0/sbt-skills")),
-  licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
-  developers := List(
+  homepage     := Some(url("https://github.com/aborg0/sbt-skills")),
+  licenses     := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  developers   := List(
     Developer(
       "aborg0",
       "Gábor Bakos",
@@ -80,13 +79,15 @@ inThisBuild(List(
 ))
 
 ThisBuild / publishMavenStyle := true
-ThisBuild / publishTo := Some(
-  "GitHub Packages" at s"https://maven.pkg.github.com/${sys.env.getOrElse("GITHUB_REPOSITORY", "aborg0/sbt-skills")}"
+ThisBuild / publishTo         := Some(
+  "GitHub Packages" at
+    s"https://maven.pkg.github.com/${sys.env.getOrElse("GITHUB_REPOSITORY", "aborg0/sbt-skills")}"
 )
-ThisBuild / credentials ++= (for {
-  actor <- sys.env.get("GITHUB_ACTOR")
-  token <- sys.env.get("GITHUB_TOKEN")
-} yield Credentials("GitHub Package Registry", "maven.pkg.github.com", actor, token)).toSeq
+ThisBuild / credentials ++=
+  (for {
+    actor <- sys.env.get("GITHUB_ACTOR")
+    token <- sys.env.get("GITHUB_TOKEN")
+  } yield Credentials("GitHub Package Registry", "maven.pkg.github.com", actor, token)).toSeq
 
 initialCommands / console := """import com.github.aborg0.sbt.skills._"""
 
@@ -94,4 +95,3 @@ enablePlugins(ScriptedPlugin)
 // set up 'scripted; sbt plugin for testing sbt plugins
 scriptedLaunchOpts ++=
   Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
-

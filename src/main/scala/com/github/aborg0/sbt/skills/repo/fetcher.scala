@@ -27,7 +27,7 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
         if (!dir.mkdirs()) {
           throw new RuntimeException(
             s"[ERROR] Failed to create directory: ${dir.getAbsolutePath}. " +
-            s"Check permissions and disk space."
+              s"Check permissions and disk space."
           )
         }
         log.info(s"Created directory: ${dir.getAbsolutePath}")
@@ -37,8 +37,8 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
   }
 
   /**
-   * Fetches or updates a skill repository from a remote source.
-   * Returns the local directory path containing the repository.
+   * Fetches or updates a skill repository from a remote source. Returns the local directory path
+   * containing the repository.
    */
   def fetchRepository(source: SkillSource): Try[File] = {
     val localDir = source.cacheDir.getOrElse(new File(baseDir, source.id))
@@ -109,7 +109,7 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
       .stripPrefix("refs/heads/")
       .stripPrefix("refs/remotes/origin/")
       .stripPrefix("origin/")
-    val localBranch = repository.exactRef(s"refs/heads/$branchName")
+    val localBranch  = repository.exactRef(s"refs/heads/$branchName")
     val remoteBranch = repository.exactRef(s"refs/remotes/origin/$branchName")
 
     if (remoteBranch != null) {
@@ -145,7 +145,7 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
    * Discover all skills in a repository following the nested structure:
    * skills/category/skillname/SKILL.md
    *
-  * Returns the skills found beneath the repository's skills directory.
+   * Returns the skills found beneath the repository's skills directory.
    */
   def discoverSkills(repoDir: File): Try[Seq[DiscoveredSkill]] = {
     Try {
@@ -153,7 +153,7 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
       if (!skillsDir.isDirectory) {
         log.warn(
           s"[DISCOVER] No 'skills' directory found in ${repoDir.getAbsolutePath}. " +
-          s"Expected: skills/category/skillname/SKILL.md"
+            s"Expected: skills/category/skillname/SKILL.md"
         )
         Seq.empty
       } else {
@@ -171,7 +171,8 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
                 results += DiscoveredSkill(categoryPath, skillName, skillMdFile)
               } else {
                 // Not a skill directory, recurse into subdirectories
-                val newCategory = if (categoryPath.isEmpty) file.getName else s"$categoryPath/${file.getName}"
+                val newCategory =
+                  if (categoryPath.isEmpty) file.getName else s"$categoryPath/${file.getName}"
                 walkDir(file, newCategory)
               }
             }
@@ -192,8 +193,8 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
   }
 
   /**
-   * Read SKILL.md file and parse metadata from frontmatter.
-    * Returns the normalized harness identifiers and supplied repository version.
+   * Read SKILL.md file and parse metadata from frontmatter. Returns the normalized harness
+   * identifiers and supplied repository version.
    */
   def parseSkillMetadata(skillMdFile: File, version: String): Try[SkillMetadata] = {
     Try {
@@ -202,8 +203,8 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
       }
       val source = Source.fromFile(skillMdFile)
       try {
-        val lines = source.getLines().toList
-        val metadata = parseYamlFrontmatter(lines)
+        val lines     = source.getLines().toList
+        val metadata  = parseYamlFrontmatter(lines)
         val harnesses = Harnesses.normalizeAll(
           metadata.getOrElse("harnesses", "copilot,claude").split(",").toSeq
         )
@@ -213,26 +214,23 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
         source.close()
       }
     }.recoverWith { case e =>
-      log.warn(s"[WARN] Failed to parse SKILL.md at ${skillMdFile.getAbsolutePath}: ${e.getMessage}")
+      log.warn(
+        s"[WARN] Failed to parse SKILL.md at ${skillMdFile.getAbsolutePath}: ${e.getMessage}"
+      )
       Failure(e)
     }
   }
 
   /**
-   * Parse YAML frontmatter from markdown file.
-   * Expects format:
-   * ---
-   * key: value
-   * key2: value2
-   * ---
+   * Parse YAML frontmatter from markdown file. Expects format: --- key: value key2: value2 ---
    */
   private def parseYamlFrontmatter(lines: List[String]): Map[String, String] = {
     if (lines.isEmpty || lines.head != "---") {
       Map.empty
     } else {
-      val result = MutableMap[String, String]()
+      val result        = MutableMap[String, String]()
       var inFrontmatter = true
-      var i = 1
+      var i             = 1
 
       while (i < lines.length && inFrontmatter) {
         val line = lines(i)
@@ -241,7 +239,7 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
         } else {
           val parts = line.split(":", 2)
           if (parts.length == 2) {
-            val key = parts(0).trim.toLowerCase
+            val key   = parts(0).trim.toLowerCase
             val value = parts(1).trim
             result(key) = value
           }
@@ -271,15 +269,15 @@ class SkillRepoFetcher(baseDir: File, log: Logger) {
 }
 
 case class DiscoveredSkill(
-  category: String,
-  name: String,
-  file: File
+    category: String,
+    name: String,
+    file: File
 )
 
 /**
  * Metadata extracted from SKILL.md frontmatter.
  */
 case class SkillMetadata(
-  harnesses: Seq[String],
-  version: String
+    harnesses: Seq[String],
+    version: String
 )

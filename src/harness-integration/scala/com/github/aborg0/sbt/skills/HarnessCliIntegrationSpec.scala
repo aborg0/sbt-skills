@@ -13,15 +13,16 @@ import java.util.UUID
 import scala.sys.process.Process
 
 abstract class HarnessCliIntegrationSpec(
-  harness: String,
-  command: (Path, Path, String) => Seq[String]
+    harness: String,
+    command: (Path, Path, String) => Seq[String]
 ) extends AnyFlatSpec with Matchers {
 
   harness should "use the generated skill through its CLI" in {
-    val workspace = Files.createTempDirectory(s"sbt-skills-$harness-cli")
-    val skillFile = workspace.resolve("SKILL.md")
+    val workspace             = Files.createTempDirectory(s"sbt-skills-$harness-cli")
+    val skillFile             = workspace.resolve("SKILL.md")
     val generatedInstructions = workspace.resolve(".instructions.md")
-    val sentinel = s"SBT_SKILLS_${harness.toUpperCase}_${UUID.randomUUID().toString.replace("-", "")}"
+    val sentinel              =
+      s"SBT_SKILLS_${harness.toUpperCase}_${UUID.randomUUID().toString.replace("-", "")}"
     val skillContent =
       s"""# Harness integration handshake
          |
@@ -68,31 +69,33 @@ abstract class HarnessCliIntegrationSpec(
 }
 
 class CopilotCliIntegrationSpec extends HarnessCliIntegrationSpec(
-  harness = "copilot",
-  command = (workspace, _, prompt) => Seq(
-    "copilot",
-    "-C",
-    workspace.toString,
-    "--no-color",
-    "--no-auto-update",
-    "--disable-builtin-mcps",
-    "--allow-all-tools",
-    "--prompt",
-    s"Read .instructions.md, then $prompt"
-  )
-)
+      harness = "copilot",
+      command = (workspace, _, prompt) =>
+        Seq(
+          "copilot",
+          "-C",
+          workspace.toString,
+          "--no-color",
+          "--no-auto-update",
+          "--disable-builtin-mcps",
+          "--allow-all-tools",
+          "--prompt",
+          s"Read .instructions.md, then $prompt"
+        )
+    )
 
 class ClaudeCliIntegrationSpec extends HarnessCliIntegrationSpec(
-  harness = "claude",
-  command = (_, instructions, prompt) => Seq(
-    "claude",
-    "--print",
-    "--output-format",
-    "text",
-    "--tools",
-    "",
-    "--append-system-prompt-file",
-    instructions.toString,
-    prompt
-  )
-)
+      harness = "claude",
+      command = (_, instructions, prompt) =>
+        Seq(
+          "claude",
+          "--print",
+          "--output-format",
+          "text",
+          "--tools",
+          "",
+          "--append-system-prompt-file",
+          instructions.toString,
+          prompt
+        )
+    )

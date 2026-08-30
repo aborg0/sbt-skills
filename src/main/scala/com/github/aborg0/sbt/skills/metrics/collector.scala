@@ -15,40 +15,45 @@ import scala.util.Try
  */
 trait MetricsCollector {
   def recordSkillSync(sourceId: String, skillCount: Int, repoRef: String): Try[Unit]
-  def recordSkillAdded(skillId: String, sourceId: String, category: String, effectiveHarnesses: Seq[String]): Try[Unit]
+  def recordSkillAdded(
+      skillId: String,
+      sourceId: String,
+      category: String,
+      effectiveHarnesses: Seq[String]
+  ): Try[Unit]
   def recordSkillRemoved(skillId: String, sourceId: String): Try[Unit]
   def flush(): Try[Unit]
 }
 
 /**
- * File-based metrics collector. Writes append-only JSON lines to a file.
- * Format: one JSON object per line, each with: event, timestamp, and event-specific fields
+ * File-based metrics collector. Writes append-only JSON lines to a file. Format: one JSON object
+ * per line, each with: event, timestamp, and event-specific fields
  */
 class FileMetricsCollector(metricsFile: File, log: Logger) extends MetricsCollector {
 
   override def recordSkillSync(sourceId: String, skillCount: Int, repoRef: String): Try[Unit] = {
     val event = JsonObject(
-      "event" -> "sync".asJson,
-      "timestamp" -> Instant.now().toString.asJson,
-      "sourceId" -> sourceId.asJson,
+      "event"      -> "sync".asJson,
+      "timestamp"  -> Instant.now().toString.asJson,
+      "sourceId"   -> sourceId.asJson,
       "skillCount" -> skillCount.asJson,
-      "repoRef" -> repoRef.asJson
+      "repoRef"    -> repoRef.asJson
     )
     writeEvent(event.asJson)
   }
 
   override def recordSkillAdded(
-    skillId: String,
-    sourceId: String,
-    category: String,
-    effectiveHarnesses: Seq[String]
+      skillId: String,
+      sourceId: String,
+      category: String,
+      effectiveHarnesses: Seq[String]
   ): Try[Unit] = {
     val event = JsonObject(
-      "event" -> "skill-added".asJson,
-      "timestamp" -> Instant.now().toString.asJson,
-      "skillId" -> skillId.asJson,
-      "sourceId" -> sourceId.asJson,
-      "category" -> category.asJson,
+      "event"              -> "skill-added".asJson,
+      "timestamp"          -> Instant.now().toString.asJson,
+      "skillId"            -> skillId.asJson,
+      "sourceId"           -> sourceId.asJson,
+      "category"           -> category.asJson,
       "effectiveHarnesses" -> effectiveHarnesses.asJson
     )
     writeEvent(event.asJson)
@@ -56,15 +61,15 @@ class FileMetricsCollector(metricsFile: File, log: Logger) extends MetricsCollec
 
   override def recordSkillRemoved(skillId: String, sourceId: String): Try[Unit] = {
     val event = JsonObject(
-      "event" -> "skill-removed".asJson,
+      "event"     -> "skill-removed".asJson,
       "timestamp" -> Instant.now().toString.asJson,
-      "skillId" -> skillId.asJson,
-      "sourceId" -> sourceId.asJson
+      "skillId"   -> skillId.asJson,
+      "sourceId"  -> sourceId.asJson
     )
     writeEvent(event.asJson)
   }
 
-  override def flush(): Try[Unit] = Try(())  // File backend doesn't need explicit flushing
+  override def flush(): Try[Unit] = Try(()) // File backend doesn't need explicit flushing
 
   private def writeEvent(event: Json): Try[Unit] = {
     Try {
@@ -85,10 +90,16 @@ class FileMetricsCollector(metricsFile: File, log: Logger) extends MetricsCollec
  * No-op metrics collector for testing or when metrics are disabled.
  */
 class NoOpMetricsCollector extends MetricsCollector {
-  override def recordSkillSync(sourceId: String, skillCount: Int, repoRef: String): Try[Unit] = Try(())
-  override def recordSkillAdded(skillId: String, sourceId: String, category: String, effectiveHarnesses: Seq[String]): Try[Unit] = Try(())
+  override def recordSkillSync(sourceId: String, skillCount: Int, repoRef: String): Try[Unit] =
+    Try(())
+  override def recordSkillAdded(
+      skillId: String,
+      sourceId: String,
+      category: String,
+      effectiveHarnesses: Seq[String]
+  ): Try[Unit]                                                                  = Try(())
   override def recordSkillRemoved(skillId: String, sourceId: String): Try[Unit] = Try(())
-  override def flush(): Try[Unit] = Try(())
+  override def flush(): Try[Unit]                                               = Try(())
 }
 
 /**

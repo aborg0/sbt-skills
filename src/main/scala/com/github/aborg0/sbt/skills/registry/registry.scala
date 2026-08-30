@@ -23,7 +23,9 @@ class SkillRegistry(registryFile: File, log: Logger) {
   def load(): Try[SkillRegistry.Data] = {
     Try {
       if (!registryFile.exists()) {
-        log.info(s"Registry file not found at ${registryFile.getAbsolutePath}, creating empty registry")
+        log.info(
+          s"Registry file not found at ${registryFile.getAbsolutePath}, creating empty registry"
+        )
         SkillRegistry.Data(Seq(), Seq())
       } else {
         val source = Source.fromFile(registryFile)
@@ -63,9 +65,9 @@ class SkillRegistry(registryFile: File, log: Logger) {
    * Add or update a source in the registry.
    */
   def addOrUpdateSource(
-    data: SkillRegistry.Data,
-    source: SkillSource,
-    override_harnesses: Option[Seq[String]]
+      data: SkillRegistry.Data,
+      source: SkillSource,
+      override_harnesses: Option[Seq[String]]
   ): SkillRegistry.Data = {
     val entry = SourceRegistryEntry(
       id = source.id,
@@ -83,8 +85,8 @@ class SkillRegistry(registryFile: File, log: Logger) {
    * Add or update skills in the registry.
    */
   def addOrUpdateSkills(
-    data: SkillRegistry.Data,
-    skills: Seq[SkillReference]
+      data: SkillRegistry.Data,
+      skills: Seq[SkillReference]
   ): SkillRegistry.Data = {
     val updatedSkillIds = skills.map(skill => (skill.sourceId, skill.path)).toSet
     val unchangedSkills = data.skills.filterNot { skill =>
@@ -108,7 +110,7 @@ class SkillRegistry(registryFile: File, log: Logger) {
   def getSkills(data: SkillRegistry.Data, sourceId: Option[String] = None): Seq[SkillReference] = {
     sourceId match {
       case Some(id) => data.skills.filter(_.sourceId == id)
-      case None => data.skills
+      case None     => data.skills
     }
   }
 
@@ -122,8 +124,8 @@ class SkillRegistry(registryFile: File, log: Logger) {
 
 object SkillRegistry {
   case class Data(
-    sources: Seq[SourceRegistryEntry],
-    skills: Seq[SkillReference]
+      sources: Seq[SourceRegistryEntry],
+      skills: Seq[SkillReference]
   )
 }
 

@@ -14,13 +14,13 @@ import scala.collection.JavaConverters._
 class SkillRepoFetcherSpec extends AnyFlatSpec with Matchers {
 
   "SkillRepoFetcher.discoverSkills" should "separate category paths from skill names" in {
-    val repoDir = Files.createTempDirectory("skill-repo")
-    val skillsDir = Files.createDirectory(repoDir.resolve("skills"))
-    val engineeringDir = Files.createDirectory(skillsDir.resolve("engineering"))
-    val backendDir = Files.createDirectory(engineeringDir.resolve("backend"))
-    val nestedSkillDir = Files.createDirectory(backendDir.resolve("code-review"))
-    val nestedSkillFile = Files.createFile(nestedSkillDir.resolve("SKILL.md"))
-    val topLevelSkillDir = Files.createDirectory(skillsDir.resolve("standalone"))
+    val repoDir           = Files.createTempDirectory("skill-repo")
+    val skillsDir         = Files.createDirectory(repoDir.resolve("skills"))
+    val engineeringDir    = Files.createDirectory(skillsDir.resolve("engineering"))
+    val backendDir        = Files.createDirectory(engineeringDir.resolve("backend"))
+    val nestedSkillDir    = Files.createDirectory(backendDir.resolve("code-review"))
+    val nestedSkillFile   = Files.createFile(nestedSkillDir.resolve("SKILL.md"))
+    val topLevelSkillDir  = Files.createDirectory(skillsDir.resolve("standalone"))
     val topLevelSkillFile = Files.createFile(topLevelSkillDir.resolve("SKILL.md"))
 
     val pathsToDelete: Seq[Path] = Seq(
@@ -35,7 +35,7 @@ class SkillRepoFetcherSpec extends AnyFlatSpec with Matchers {
     )
 
     try {
-      val fetcher = new SkillRepoFetcher(repoDir.toFile, Logger.Null)
+      val fetcher    = new SkillRepoFetcher(repoDir.toFile, Logger.Null)
       val discovered = fetcher.discoverSkills(repoDir.toFile)
 
       discovered.isSuccess shouldBe true
@@ -60,9 +60,9 @@ class SkillRepoFetcherSpec extends AnyFlatSpec with Matchers {
   }
 
   "SkillRepoFetcher.fetchRepository" should "track and update a non-default remote branch" in {
-    val sourceDir = Files.createTempDirectory("skill-source")
-    val cacheDir = Files.createTempDirectory("skill-cache")
-    val sourceGit = Git.init().setDirectory(sourceDir.toFile).call()
+    val sourceDir   = Files.createTempDirectory("skill-source")
+    val cacheDir    = Files.createTempDirectory("skill-cache")
+    val sourceGit   = Git.init().setDirectory(sourceDir.toFile).call()
     val contentFile = sourceDir.resolve("content.txt")
 
     try {
@@ -75,15 +75,17 @@ class SkillRepoFetcherSpec extends AnyFlatSpec with Matchers {
       commit(sourceGit, contentFile, "feature one")
       sourceGit.checkout().setName(defaultBranch).call()
 
-      val fetcher = new SkillRepoFetcher(cacheDir.toFile, Logger.Null)
-      val source = SkillSource("remote", sourceDir.toUri.toString, "feature")
+      val fetcher    = new SkillRepoFetcher(cacheDir.toFile, Logger.Null)
+      val source     = SkillSource("remote", sourceDir.toUri.toString, "feature")
       val firstFetch = fetcher.fetchRepository(source).get
 
       val firstCachedGit = Git.open(firstFetch)
       try {
         firstCachedGit.getRepository.getBranch shouldBe "feature"
-        firstCachedGit.getRepository.getConfig.getString("branch", "feature", "remote") shouldBe "origin"
-        firstCachedGit.getRepository.getConfig.getString("branch", "feature", "merge") shouldBe "refs/heads/feature"
+        firstCachedGit.getRepository.getConfig.getString("branch", "feature", "remote") shouldBe
+          "origin"
+        firstCachedGit.getRepository.getConfig.getString("branch", "feature", "merge") shouldBe
+          "refs/heads/feature"
       } finally {
         firstCachedGit.close()
       }
@@ -95,7 +97,7 @@ class SkillRepoFetcherSpec extends AnyFlatSpec with Matchers {
       sourceGit.checkout().setName(defaultBranch).call()
 
       val secondFetch = fetcher.fetchRepository(source).get
-      val cachedGit = Git.open(secondFetch)
+      val cachedGit   = Git.open(secondFetch)
       try {
         cachedGit.getRepository.resolve("HEAD").name() shouldBe latestCommit
         read(secondFetch.toPath.resolve("content.txt")) shouldBe "feature-two"

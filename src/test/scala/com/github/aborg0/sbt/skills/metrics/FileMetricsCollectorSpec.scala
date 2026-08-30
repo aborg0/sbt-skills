@@ -11,7 +11,7 @@ import java.nio.file.Files
 class FileMetricsCollectorSpec extends AnyFlatSpec with Matchers {
 
   "FileMetricsCollector" should "write metrics as UTF-8" in {
-    val directory = Files.createTempDirectory("metrics")
+    val directory   = Files.createTempDirectory("metrics")
     val metricsFile = directory.resolve("metrics.jsonl")
 
     try {

@@ -12,7 +12,8 @@ object JsonCodecs {
   implicit val fileEncoder: Encoder[File] = Encoder.encodeString.contramap[File](_.getAbsolutePath)
   implicit val fileDecoder: Decoder[File] = Decoder.decodeString.map(new File(_))
 
-  implicit val instantEncoder: Encoder[Instant] = Encoder.encodeString.contramap[Instant](_.toString)
+  implicit val instantEncoder: Encoder[Instant] =
+    Encoder.encodeString.contramap[Instant](_.toString)
   implicit val instantDecoder: Decoder[Instant] = Decoder.decodeString.map(Instant.parse)
 
   implicit val skillSourceEncoder: Encoder[SkillSource] = deriveEncoder

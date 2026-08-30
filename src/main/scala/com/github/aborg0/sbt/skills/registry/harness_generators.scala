@@ -18,8 +18,7 @@ trait HarnessGenerator {
 }
 
 /**
- * Generates .instructions.md file by concatenating skill contents,
- * organized by harness type.
+ * Generates .instructions.md file by concatenating skill contents, organized by harness type.
  */
 class InstructionsFileGenerator(log: Logger) extends HarnessGenerator {
 
@@ -28,7 +27,7 @@ class InstructionsFileGenerator(log: Logger) extends HarnessGenerator {
       Ordering.by(_.mkString("\u0000"))
     val grouped = skills.foldLeft(SortedMap.empty[SortedSet[String], Seq[SkillReference]]) {
       case (groups, skill) =>
-        val harnesses = SortedSet.empty[String] ++ skill.effectiveHarnesses
+        val harnesses          = SortedSet.empty[String] ++ skill.effectiveHarnesses
         val skillsForHarnesses = groups.getOrElse(harnesses, Seq.empty)
         groups.updated(harnesses, skill +: skillsForHarnesses)
     }
@@ -46,7 +45,7 @@ class InstructionsFileGenerator(log: Logger) extends HarnessGenerator {
           val skillId = Seq(skill.sourceId, skill.category, skill.id)
             .filter(_.nonEmpty)
             .mkString("/")
-          val skillKey = s"${skill.sourceId}:${skill.path}"
+          val skillKey     = s"${skill.sourceId}:${skill.path}"
           val skillContent = readSkillFile(skillsDir.get(skillKey), skillKey)
           s"## $skillId\n\n$skillContent"
         }
@@ -123,9 +122,9 @@ object HarnessGeneratorFactory {
   def create(mode: String, log: Logger): Seq[HarnessGenerator] = {
     mode.toLowerCase match {
       case "instructions-file" => Seq(new InstructionsFileGenerator(log))
-      case "registry-file" => Seq(new RegistryFileGenerator())
+      case "registry-file"     => Seq(new RegistryFileGenerator())
       case "both" => Seq(new InstructionsFileGenerator(log), new RegistryFileGenerator())
-      case other =>
+      case other  =>
         throw new IllegalArgumentException(s"Unknown harness mode: $other")
     }
   }
@@ -137,17 +136,17 @@ object HarnessGeneratorFactory {
 object HarnessOutputWriter {
 
   def write(
-    mode: String,
-    skills: Seq[SkillReference],
-    skillsDir: Map[String, File],
-    outputDir: File,
-    log: Logger
+      mode: String,
+      skills: Seq[SkillReference],
+      skillsDir: Map[String, File],
+      outputDir: File,
+      log: Logger
   ): Try[Unit] = {
     Try {
       val generators = HarnessGeneratorFactory.create(mode, log)
 
       for (generator <- generators) {
-        val content = generator.generate(skills, skillsDir)
+        val content    = generator.generate(skills, skillsDir)
         val outputFile = generator match {
           case _: InstructionsFileGenerator =>
             new File(outputDir, ".instructions.md")
