@@ -75,8 +75,10 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sbt -sbt-version 1.13.0 publish
-          sbt -sbt-version 2.0.8 publish
+          short_sha="${GITHUB_SHA::7}"
+          snapshot_version="0.1.${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${short_sha}-SNAPSHOT"
+          sbt -sbt-version 1.13.0 "set ThisBuild / version := \"$snapshot_version\"; publish"
+          sbt -sbt-version 2.0.8 "set ThisBuild / version := \"$snapshot_version\"; publish"
 
   publish-release:
     name: Publish Release

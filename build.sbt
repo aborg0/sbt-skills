@@ -1,5 +1,7 @@
-name    := """sbt-skills"""
-version := "0.1-SNAPSHOT"
+name := """sbt-skills"""
+
+ThisBuild / version       := "0.1-SNAPSHOT"
+ThisBuild / versionScheme := Some("early-semver")
 
 sbtPlugin := true
 
