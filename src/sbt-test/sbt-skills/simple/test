@@ -1,0 +1,2 @@
+# Verify the plugin loads and exposes its auto-imported settings
+> show skillsHarnessMode

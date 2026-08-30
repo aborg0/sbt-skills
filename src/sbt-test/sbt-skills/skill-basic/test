@@ -1,0 +1,6 @@
+# Scripted test for sbt-skills plugin
+# Test 1: Verify skillsListSources task is available
+> skillsListSources
+
+# Test 2: Verify skillsList task is available  
+> skillsList
