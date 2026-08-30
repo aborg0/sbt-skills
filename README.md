@@ -1,6 +1,6 @@
 # sbt-skills Plugin
 
-A comprehensive sbt 1.x plugin for managing LLM skills (Markdown-based documents) from multiple Git repositories with per-source harness overrides, auto-generation of IDE integration files, and extensible metrics tracking.
+A comprehensive sbt 1.x and 2.x plugin for managing LLM skills (Markdown-based documents) from multiple Git repositories with per-source harness overrides, auto-generation of IDE integration files, and extensible metrics tracking.
 
 ## 🎯 Overview
 
@@ -17,6 +17,14 @@ The **sbt-skills** plugin solves the problem of organizing, versioning, and dist
 ### 1. Add to `build.sbt`
 
 ```scala
+resolvers += "GitHub Packages" at "https://maven.pkg.github.com/aborg0/sbt-skills"
+credentials += Credentials(
+  "GitHub Package Registry",
+  "maven.pkg.github.com",
+  sys.env("GITHUB_ACTOR"),
+  sys.env("GITHUB_TOKEN")
+)
+
 addSbtPlugin("com.github.aborg0" % "sbt-skills" % "0.1-SNAPSHOT")
 
 skillsSources := Seq(
@@ -129,7 +137,7 @@ Test coverage:
 
 ## 🔧 Requirements
 
-- **sbt** 1.0+ (tested with 1.13.0)
+- **sbt** 1.13+ or 2.0+ (tested with 1.13.0 and 2.0.8)
 - **Scala** 2.12
 - **Java** 11+
 

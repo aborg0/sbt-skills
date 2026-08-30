@@ -79,6 +79,15 @@ inThisBuild(List(
   )
 ))
 
+ThisBuild / publishMavenStyle := true
+ThisBuild / publishTo := Some(
+  "GitHub Packages" at s"https://maven.pkg.github.com/${sys.env.getOrElse("GITHUB_REPOSITORY", "aborg0/sbt-skills")}"
+)
+ThisBuild / credentials ++= (for {
+  actor <- sys.env.get("GITHUB_ACTOR")
+  token <- sys.env.get("GITHUB_TOKEN")
+} yield Credentials("GitHub Package Registry", "maven.pkg.github.com", actor, token)).toSeq
+
 initialCommands / console := """import com.github.aborg0.sbt.skills._"""
 
 enablePlugins(ScriptedPlugin)
