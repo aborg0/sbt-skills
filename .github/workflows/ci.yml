@@ -77,8 +77,7 @@ jobs:
         run: |
           short_sha="${GITHUB_SHA::7}"
           snapshot_version="0.1.${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}-${short_sha}-SNAPSHOT"
-          sbt -sbt-version 1.13.0 "set ThisBuild / version := \"$snapshot_version\"; publish"
-          sbt -sbt-version 2.0.8 "set ThisBuild / version := \"$snapshot_version\"; publish"
+          sbt -sbt-version 1.13.0 "set version := \"$snapshot_version\"; +publish"
 
   publish-release:
     name: Publish Release
@@ -109,5 +108,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           release_version="${GITHUB_REF_NAME#v}"
-          sbt -sbt-version 1.13.0 "set ThisBuild / version := \"$release_version\"; publish"
-          sbt -sbt-version 2.0.8 "set ThisBuild / version := \"$release_version\"; publish"
+          sbt -sbt-version 1.13.0 "set version := \"$release_version\"; +publish"
