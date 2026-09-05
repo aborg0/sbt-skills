@@ -66,6 +66,17 @@ libraryDependencies ++= {
 // Compat layer providing a unified API for plugins cross-building against sbt 1.x and sbt 2.x
 addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.2.0")
 
+skillsSources += 
+  SkillSource("mattpocock", "https://github.com/mattpocock/skills.git", "main")
+
+
+skillsHarnesses := Seq("copilot")
+
+skillsToAdd := Seq(
+  "mattpocock:engineering/code-review",     // Public
+  "mattpocock:productivity/handoff",        // Public
+)
+
 inThisBuild(List(
   organization := "com.github.aborg0",
   homepage := Some(url("https://github.com/aborg0/sbt-skills")),

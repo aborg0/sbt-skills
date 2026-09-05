@@ -1,4 +1,5 @@
 *.class
+*.semanticdb
 *.log
 
 target
@@ -15,3 +16,4 @@ bin
 .vscode
 .idea
 .bsp
+**/metals.sbt

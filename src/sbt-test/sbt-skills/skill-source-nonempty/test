@@ -1,0 +1,16 @@
+# Scripted test for sbt-skills plugin with a non-empty skillsSources.
+# Sets up a local git repository (no network access) and verifies that
+# skillsListSources, skillsSync, and skillsList work against a real source.
+
+$ exec bash setup.sh
+
+# skillsListSources should print the configured non-empty source without fetching it.
+> skillsListSources
+
+# skillsSync clones the local repo, discovers the skill, and generates harness output.
+> skillsSync
+
+$ exists .instructions.md
+$ exists .sbt-skills/registry.json
+
+> skillsList
