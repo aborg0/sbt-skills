@@ -35,6 +35,10 @@ jobs:
         uses: sbt/setup-sbt@v1
 
       - name: Run tests
+        env:
+          # GitHub's ephemeral workflow token is available to CI checkout tests;
+          # no personal token is required and remote-push tests remain excluded.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: sbt -sbt-version ${{ matrix.sbt-version }} "test; scripted"
 
       - name: Package plugin

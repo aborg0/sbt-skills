@@ -211,6 +211,14 @@ Feedback events use `event: "feedback"` and `schema: "feedback-v1"`, with `ratin
 They are kept distinct from sync, add, and remove usage events so future feedback consumers can
 evolve independently.
 
+Remote Git integration tests are tagged `com.github.aborg0.sbt.skills.RemoteGitIntegration` and
+excluded from the default `test` task. Run them explicitly only in an environment with an
+appropriate short-lived token:
+
+```bash
+sbt 'testOnly -- -n com.github.aborg0.sbt.skills.RemoteGitIntegration'
+```
+
 #### `skillsPatchesDir`
 Directory containing unified-diff overrides. A patch at
 `source/category/skill.patch` is applied to the matching cached `SKILL.md` when harness output is generated.

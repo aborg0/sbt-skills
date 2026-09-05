@@ -63,6 +63,14 @@ libraryDependencies ++= {
   else Seq.empty
 }
 
+// Remote Git tests are opt-in. Local unit tests and scripted tests must remain
+// runnable without personal credentials or network access.
+Test / testOptions += Tests.Argument(
+  TestFrameworks.ScalaTest,
+  "-l",
+  "com.github.aborg0.sbt.skills.RemoteGitIntegration"
+)
+
 // Compat layer providing a unified API for plugins cross-building against sbt 1.x and sbt 2.x
 addSbtPlugin("com.github.sbt" % "sbt2-compat" % "0.2.0")
 
