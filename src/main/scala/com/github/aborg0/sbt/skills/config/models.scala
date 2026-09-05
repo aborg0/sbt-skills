@@ -88,13 +88,13 @@ case class SkillRegistry(
  * Configuration for metrics collection.
  *
  * @param backend
- *   "file" or "git" (only "file" supported in Phase 1)
+ *   "file", "git", or "none"
  * @param metricsFile
- *   Local file path for file-based backend
+ *   Local file path for the metrics JSONL stream
  * @param metricsGitRepo
- *   Git repository URL for git-based backend (Phase 3)
+ *   Reserved for a future managed Git checkout
  * @param metricsGitBranch
- *   Branch in metrics repo (Phase 3)
+ *   Branch in metrics repo
  */
 case class MetricsConfig(
     backend: String = "file",
@@ -118,5 +118,13 @@ case class SkillsConfig(
     skillsAutoGenerate: Boolean = true,
     skillsMetricsBackend: String = "file",
     skillsMetricsFile: File = new File(".sbt-skills/metrics.jsonl"),
-    skillsAutoInitRegistry: Boolean = true
+    skillsMetricsGitBranch: String = "metrics",
+    skillsMetricsGitRemote: String = "origin",
+    skillsMetricsGitPush: Boolean = false,
+    skillsMetricsGitRepository: Option[String] = None,
+    skillsMetricsGitDirectory: File = new File(".sbt-skills/metrics-repository"),
+    skillsMetricsGitPath: String = ".sbt-skills/metrics.jsonl",
+    skillsAutoInitRegistry: Boolean = true,
+    skillsPatchesDir: File = new File(".sbt-skills/patches"),
+    skillsVersionOverrides: Map[String, String] = Map()
 )

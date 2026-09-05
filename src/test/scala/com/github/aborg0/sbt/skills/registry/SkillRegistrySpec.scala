@@ -123,4 +123,15 @@ class SkillRegistrySpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "remove one skill without removing other skills from its source" in {
+    val now = Instant.now()
+    val skill1 = SkillReference("review", "source1", "engineering", "skills/engineering/review/SKILL.md", "abc", Seq("copilot"), Seq("copilot"), now)
+    val skill2 = skill1.copy(id = "testing", path = "skills/engineering/testing/SKILL.md")
+    val data = Data(Seq(), Seq(skill1, skill2))
+
+    withTemporaryRegistry { registry =>
+      registry.removeSkill(data, "source1", "engineering/review").skills shouldBe Seq(skill2)
+    }
+  }
+
 }

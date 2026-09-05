@@ -10,7 +10,7 @@ The **sbt-skills** plugin solves the problem of organizing, versioning, and dist
 - ✅ **Harness-specific overrides** - Restrict certain skills to Copilot or Claude
 - ✅ **Automatic IDE integration** - Generate `.instructions.md` or `SKILLS.md` files
 - ✅ **Append-only metrics** - Track skill usage & adoption
-- ✅ **Extensible architecture** - Ready for patches (Phase 2) and advanced metrics (Phase 3)
+- ✅ **Patch and metrics workflows** - Unified-diff overrides and optional Git-backed metrics
 
 ## 🚀 Quick Start
 
@@ -80,11 +80,36 @@ skillsHarnessMode := "instructions-file"  // or "registry-file" or "both"
 ```
 
 ### Extensible Metrics Foundation
-Track skill sync events (prepared for Phase 3 git backend):
+Track skill sync events in an append-only file or commit them to a Git branch. Local Git commits are
+enabled with the `git` backend; pushing is separately opt-in.
 
 ```scala
-skillsMetricsBackend := "file"  // Append-only JSON lines format
+skillsMetricsBackend := "file"  // or "git" or "none"
 skillsMetricsFile := baseDirectory.value / ".sbt-skills" / "metrics.jsonl"
+skillsMetricsGitBranch := "metrics"
+skillsMetricsGitRemote := "origin"
+skillsMetricsGitPush := false
+```
+
+For a user-specific branch, use a stable identity from the CI or developer environment:
+
+```scala
+skillsMetricsGitBranch := s"user/${sys.env.getOrElse("GITHUB_ACTOR", "local")}"
+skillsMetricsGitPush := true
+```
+
+The metrics file must be inside an existing local checkout of the target repository. When pushing
+is enabled, the collector uses `GITHUB_TOKEN` as an environment-only credential and never writes it
+to the build or metrics files.
+
+Set `skillsMetricsGitRepository` to have the plugin clone and manage the metrics repository
+automatically. Before a push, it fetches and rebases onto the remote branch; JSONL conflicts retain
+remote events first and append new local events at the end.
+
+Feedback uses a separate versioned schema:
+
+```bash
+sbt 'skillsFeedback internal:security/review 5 "The review guidance was useful"'
 ```
 
 ## 🛠️ Supported Harnesses
@@ -156,15 +181,16 @@ Test coverage:
 - ✅ File-based metrics tracking
 - ✅ Comprehensive error handling & diagnostics
 
-### Phase 2 (Planned)
-- Patch management system (`skillsPatchesDir`)
-- `skillsUpdate` task with conflict detection
+### Phase 2 ✅
+- Unified-diff patch management through `skillsPatchesDir`
+- `skillsUpdate` task for source-ref changes
 - Per-skill version overrides
+- `skillsAdd`, `skillsRemove`, and `skillsInfo` tasks
 
-### Phase 3 (Future)
-- Git-based metrics backend
-- User satisfaction surveys
-- Metrics aggregation dashboard
+### Phase 3 ✅ Foundation
+- Git-based metrics backend with local commits
+- Sync, add, and remove event tracking
+- Survey and dashboard consumers can build on the append-only event stream
 
 ## 🤝 Contributing
 

@@ -163,10 +163,69 @@ skillsAutoGenerate := true
 ```
 
 #### `skillsMetricsBackend`
-Metrics storage (currently only "file" supported; "git" planned for Phase 3).
+Metrics storage. Use `file` for append-only JSONL, `git` to commit each event locally, or `none` to disable metrics.
 
 ```scala
 skillsMetricsBackend := "file"
+```
+
+#### Git metrics branch and publishing
+
+The Git backend commits metrics to `skillsMetricsFile` on the configured branch. It does not push by
+default. Set `skillsMetricsGitPush := true` to publish commits to the configured remote; the backend
+expects `GITHUB_TOKEN` in the process environment and never stores credentials in project files.
+
+```scala
+skillsMetricsBackend := "git"
+skillsMetricsFile := baseDirectory.value / ".sbt-skills" / "metrics.jsonl"
+skillsMetricsGitBranch := "metrics" // shared branch
+skillsMetricsGitRemote := "origin"
+skillsMetricsGitPush := false
+skillsMetricsGitRepository := Some("https://github.com/yourorg/skill-metrics.git")
+skillsMetricsGitDirectory := baseDirectory.value / ".sbt-skills" / "metrics-repository"
+skillsMetricsGitPath := ".sbt-skills/metrics.jsonl"
+```
+
+For per-user feedback branches:
+
+```scala
+skillsMetricsGitBranch := s"user/${sys.env.getOrElse("GITHUB_ACTOR", "local")}"
+skillsMetricsGitPush := true
+```
+
+When `skillsMetricsGitRepository` is set, the plugin clones the repository into
+`skillsMetricsGitDirectory` on first use and writes to `skillsMetricsGitPath`. A local repository
+path can also be used instead of a URL. Before pushing, it fetches the configured remote and rebases
+onto the remote branch. If the JSONL file conflicts, remote events are retained first and local
+events are de-duplicated and appended at the end. A shared `metrics` branch is suitable for
+aggregate usage statistics; a `user/<identity>` branch keeps feedback separated by contributor.
+
+#### `skillsFeedback`
+Record user feedback using a separate, versioned event schema. The comment may contain spaces:
+
+```bash
+sbt 'skillsFeedback internal:security/review 5 "The review guidance was useful"'
+```
+
+Feedback events use `event: "feedback"` and `schema: "feedback-v1"`, with `rating` from 1 to 5.
+They are kept distinct from sync, add, and remove usage events so future feedback consumers can
+evolve independently.
+
+#### `skillsPatchesDir`
+Directory containing unified-diff overrides. A patch at
+`source/category/skill.patch` is applied to the matching cached `SKILL.md` when harness output is generated.
+
+```scala
+skillsPatchesDir := baseDirectory.value / ".sbt-skills" / "patches"
+```
+
+#### `skillsVersionOverrides`
+Override the displayed registry version for selected skills without changing the fetched repository.
+
+```scala
+skillsVersionOverrides := Map(
+  "internal:security/review" -> "approved-2026-09"
+)
 ```
 
 #### `skillsMetricsFile`
@@ -350,7 +409,7 @@ project-root/
 │   │   │   └── ...
 │   │   ├── registry.json            # Master registry (all skills)
 │   │   └── metrics.jsonl            # Metrics log (append-only)
-│   └── patches/                     # (Phase 2: customizations)
+│   └── patches/                     # Unified-diff skill overrides
 │
 ├── .instructions.md                 # Generated: concatenated skills
 └── SKILLS.md                        # Generated: skill registry table (if mode="registry-file")
@@ -473,7 +532,7 @@ Run `sbt skillsList` to see which skills are registered and their harnesses.
    )
    ```
 
-4. **Monitor metrics:** Check `.sbt-skills/metrics.jsonl` for usage insights (Phase 3).
+4. **Monitor metrics:** Check `.sbt-skills/metrics.jsonl`, or inspect the Git history when using `skillsMetricsBackend := "git"`.
 
 5. **Review generated files:** Check `.instructions.md` or `SKILLS.md` to ensure skills integrated correctly before committing.
 
@@ -488,15 +547,15 @@ Run `sbt skillsList` to see which skills are registered and their harnesses.
   - File-based metrics (foundation for Phase 3)
   - Comprehensive error messages & diagnostics
 
-- **0.2.0** (Planned / Phase 2)
+- **0.2.0** (Phase 2)
   - Patch management (`skillsPatchesDir`)
-  - Update detection & conflict resolution
-  - `skillsUpdate` task
+  - Source-ref update detection
+  - `skillsUpdate`, `skillsAdd`, `skillsRemove`, and `skillsInfo` tasks
 
-- **0.3.0** (Planned / Phase 3)
+- **0.3.0** (Phase 3 foundation)
   - Git-based metrics backend
-  - User satisfaction surveys
-  - Metrics aggregation dashboard
+  - Add/remove/sync event tracking
+  - Append-only event stream for survey and dashboard consumers
 
 ---
 

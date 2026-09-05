@@ -2,10 +2,12 @@ package com.github.aborg0.sbt.skills
 
 import com.github.aborg0.sbt.skills.config._
 import com.github.aborg0.sbt.skills.metrics.MetricsCollectorFactory
+import com.github.aborg0.sbt.skills.patches.SkillPatchManager
 import com.github.aborg0.sbt.skills.registry.{SkillRegistry => SkillReg, _}
 import com.github.aborg0.sbt.skills.repo.SkillRepoFetcher
 import sbt._
 import sbt.Keys._
+import sbt.complete.DefaultParsers.spaceDelimited
 import sbt.plugins.JvmPlugin
 
 import java.io.File
@@ -68,21 +70,57 @@ object SbtSkillsPlugin extends AutoPlugin {
     )
 
     val skillsMetricsBackend = settingKey[String](
-      "Metrics backend: file or git (Phase 3)"
+      "Metrics backend: file, git, or none"
     )
 
     val skillsMetricsFile = settingKey[File](
       "Local metrics file for file-based backend"
     )
 
+    val skillsMetricsGitBranch = settingKey[String](
+      "Git branch for metrics commits (for example, user/<name> or metrics)"
+    )
+
+    val skillsMetricsGitRemote = settingKey[String](
+      "Git remote used when pushing metrics commits"
+    )
+
+    val skillsMetricsGitPush = settingKey[Boolean](
+      "Whether the Git metrics backend should push commits"
+    )
+
+    val skillsMetricsGitRepository = settingKey[Option[String]](
+      "Optional Git repository URL or local path managed by the metrics backend"
+    )
+
+    val skillsMetricsGitDirectory = settingKey[File](
+      "Local checkout directory for the managed metrics repository"
+    )
+
+    val skillsMetricsGitPath = settingKey[String](
+      "Metrics JSONL path relative to the managed Git repository"
+    )
+
     val skillsAutoInitRegistry = settingKey[Boolean](
       "Whether to initialize registry on first sync"
+    )
+
+    val skillsPatchesDir = settingKey[File](
+      "Directory containing per-skill .patch override files"
+    )
+
+    val skillsVersionOverrides = settingKey[Map[String, String]](
+      "Per-skill version overrides keyed by sourceId:category/skill"
     )
 
     // Task keys
 
     val skillsSync = taskKey[Unit](
       "Sync all configured skill repositories"
+    )
+
+    val skillsUpdate = taskKey[Unit](
+      "Show registered skills whose configured source version has changed"
     )
 
     val skillsAdd = inputKey[Unit](
@@ -99,6 +137,10 @@ object SbtSkillsPlugin extends AutoPlugin {
 
     val skillsInfo = inputKey[Unit](
       "Show detailed information about a skill (usage: skillsInfo sourceId:category/skill)"
+    )
+
+    val skillsFeedback = inputKey[Unit](
+      "Record feedback (usage: skillsFeedback sourceId:category/skill rating comment...)"
     )
 
     val skillsListSources = taskKey[Unit](
@@ -121,10 +163,23 @@ object SbtSkillsPlugin extends AutoPlugin {
     skillsAutoGenerate           := true,
     skillsMetricsBackend         := "file",
     skillsMetricsFile            := baseDirectory.value / ".sbt-skills" / "metrics.jsonl",
+    skillsMetricsGitBranch       := "metrics",
+    skillsMetricsGitRemote       := "origin",
+    skillsMetricsGitPush         := false,
+    skillsMetricsGitRepository   := None,
+    skillsMetricsGitDirectory    := baseDirectory.value / ".sbt-skills" / "metrics-repository",
+    skillsMetricsGitPath         := ".sbt-skills/metrics.jsonl",
     skillsAutoInitRegistry       := true,
+    skillsPatchesDir              := baseDirectory.value / ".sbt-skills" / "patches",
+    skillsVersionOverrides       := Map(),
 
     // Tasks
     skillsSync        := skillsSyncTask.value,
+    skillsUpdate      := skillsUpdateTask.value,
+    skillsAdd         := skillsAddTask.evaluated,
+    skillsRemove      := skillsRemoveTask.evaluated,
+    skillsInfo        := skillsInfoTask.evaluated,
+    skillsFeedback    := skillsFeedbackTask.evaluated,
     skillsList        := skillsListTask.value,
     skillsListSources := skillsListSourcesTask.value
   )
@@ -154,6 +209,12 @@ object SbtSkillsPlugin extends AutoPlugin {
     val metricsCollector = MetricsCollectorFactory.create(
       config.skillsMetricsBackend,
       config.skillsMetricsFile,
+      config.skillsMetricsGitBranch,
+      config.skillsMetricsGitRemote,
+      config.skillsMetricsGitPush,
+      config.skillsMetricsGitRepository,
+      config.skillsMetricsGitDirectory,
+      config.skillsMetricsGitPath,
       log
     )
 
@@ -197,7 +258,12 @@ object SbtSkillsPlugin extends AutoPlugin {
               }
 
               // Parse skill metadata and create references
-              val skillRefs = discoveredSkills.flatMap { discoveredSkill =>
+              val selectedSkills = discoveredSkills.filter { discoveredSkill =>
+                config.skillsToAdd.isEmpty || config.skillsToAdd.contains(
+                  s"${source.id}:${discoveredSkill.category}/${discoveredSkill.name}"
+                ) || config.skillsToAdd.contains(s"${source.id}:skills/${discoveredSkill.category}/${discoveredSkill.name}")
+              }
+              val skillRefs = selectedSkills.flatMap { discoveredSkill =>
                 fetcher.parseSkillMetadata(discoveredSkill.file, version) match {
                   case Success(metadata) =>
                     // Determine effective harnesses
@@ -211,6 +277,11 @@ object SbtSkillsPlugin extends AutoPlugin {
                       Seq("skills", discoveredSkill.category, discoveredSkill.name, "SKILL.md")
                         .filter(_.nonEmpty)
                         .mkString("/")
+                    val skillKey = s"${source.id}:${skillPath}"
+                    val effectiveVersion = config.skillsVersionOverrides
+                      .get(skillKey)
+                      .orElse(config.skillsVersionOverrides.get(s"${source.id}:${discoveredSkill.category}/${discoveredSkill.name}"))
+                      .getOrElse(version)
 
                     if (effectiveHarnesses.isEmpty) {
                       log.warn(
@@ -228,11 +299,22 @@ object SbtSkillsPlugin extends AutoPlugin {
                       sourceId = source.id,
                       category = discoveredSkill.category,
                       path = skillPath,
-                      version = version,
+                      version = effectiveVersion,
                       harnessesInRepo = metadata.harnesses,
                       effectiveHarnesses = effectiveHarnesses,
                       lastFetched = Instant.now(),
-                      customized = false
+                      customized = SkillPatchManager
+                        .patchFile(config.skillsPatchesDir, SkillReference(
+                          discoveredSkill.name,
+                          source.id,
+                          discoveredSkill.category,
+                          skillPath,
+                          version,
+                          metadata.harnesses,
+                          effectiveHarnesses,
+                          Instant.now()
+                        ))
+                        .isFile
                     ))
                   case Failure(e) =>
                     log.warn(
@@ -279,30 +361,54 @@ object SbtSkillsPlugin extends AutoPlugin {
         throw e
     }
 
+    val oldSkills = currentData.skills.map(skill => s"${skill.sourceId}:${skill.path}" -> skill).toMap
+    val newSkills = updatedData.skills.map(skill => s"${skill.sourceId}:${skill.path}" -> skill).toMap
+    newSkills.values.filter(skill => !oldSkills.contains(s"${skill.sourceId}:${skill.path}")).foreach { skill =>
+      metricsCollector.recordSkillAdded(skill.id, skill.sourceId, skill.category, skill.effectiveHarnesses).failed.foreach { error =>
+        log.warn(s"[WARN] Failed to record added-skill metric: ${error.getMessage}")
+      }
+    }
+    oldSkills.values.filter { skill =>
+      !newSkills.contains(s"${skill.sourceId}:${skill.path}") &&
+        config.skillsSources.exists(_.id == skill.sourceId) &&
+        !config.skillsSourceExclude.contains(skill.sourceId)
+    }.foreach { skill =>
+      metricsCollector.recordSkillRemoved(skill.id, skill.sourceId).failed.foreach { error =>
+        log.warn(s"[WARN] Failed to record removed-skill metric: ${error.getMessage}")
+      }
+    }
+
     // Generate harness output if auto-generate is enabled
     if (config.skillsAutoGenerate) {
       val skillsToGenerate = updatedData.skills.filter(_.effectiveHarnesses.nonEmpty)
       if (skillsToGenerate.nonEmpty) {
         log.info(s"\n[GENERATE] Generating harness output (mode: ${config.skillsHarnessMode})...")
         // Build map of skill files for content reading
-        val skillsFileMap = MutableMap[String, File]()
-        for (skill <- skillsToGenerate) {
-          val skillDir  = new File(config.skillsSourceCacheDir, skill.sourceId)
-          val skillFile = new File(skillDir, skill.path)
-          if (skillFile.exists()) {
-            skillsFileMap(s"${skill.sourceId}:${skill.path}") = skillFile
-          } else {
-            log.warn(s"[WARN] Skill file not found: ${skillFile.getAbsolutePath}")
+        val materialized = skillsToGenerate.flatMap { skill =>
+          val sourceFile = new File(config.skillsSourceCacheDir, s"${skill.sourceId}/${skill.path}")
+          if (sourceFile.exists()) Some((skill, sourceFile))
+          else {
+            log.warn(s"[WARN] Skill file not found: ${sourceFile.getAbsolutePath}")
+            None
           }
         }
-
-        HarnessOutputWriter.write(
-          config.skillsHarnessMode,
-          skillsToGenerate,
-          skillsFileMap.toMap,
-          config.skillsOutputDir,
+        SkillPatchManager.materialize(
+          materialized.map(_._1),
+          config.skillsSourceCacheDir,
+          config.skillsPatchesDir,
+          new File(config.skillsSourceCacheDir.getParentFile, "rendered"),
           log
-        ) match {
+        ).flatMap { case (skillsFileMap, customized) =>
+          HarnessOutputWriter.write(
+            config.skillsHarnessMode,
+            skillsToGenerate.map { skill =>
+              if (customized.contains(s"${skill.sourceId}:${skill.path}")) skill.copy(customized = true) else skill
+            },
+            skillsFileMap,
+            config.skillsOutputDir,
+            log
+          )
+        } match {
           case Success(_) =>
             log.info(s"[GENERATE] ✓ Harness files generated successfully")
           case Failure(e) =>
@@ -367,6 +473,32 @@ object SbtSkillsPlugin extends AutoPlugin {
     log.info("═" * 60)
   }
 
+  private lazy val skillsUpdateTask = Def.task {
+    val log = streams.value.log
+    val config = buildConfig(state.value)
+    val registry = new SkillReg(
+      new File(config.skillsSourceCacheDir.getParentFile, "registry.json"),
+      log
+    )
+    registry.load() match {
+      case Success(data) =>
+        val configuredRefs = config.skillsSources.map(source => source.id -> source.ref).toMap
+        val registeredRefs = data.sources.map(source => source.id -> source.ref).toMap
+        val updates = data.skills.filter { skill =>
+          configuredRefs.get(skill.sourceId).exists(ref => registeredRefs.get(skill.sourceId).forall(_ != ref))
+        }
+        if (updates.isEmpty) log.info("[UPDATE] No registered skills require an update")
+        else {
+          log.info(s"[UPDATE] ${updates.length} skill(s) may have updates:")
+          updates.sortBy(skill => (skill.sourceId, skill.category, skill.id)).foreach { skill =>
+            log.info(s"[UPDATE] ${skill.sourceId}:${skill.category}/${skill.id} (${skill.version})")
+          }
+        }
+      case Failure(error) =>
+        throw new RuntimeException(s"[ERROR] Failed to load registry: ${error.getMessage}", error)
+    }
+  }
+
   private lazy val skillsListSourcesTask = Def.task {
     val log    = streams.value.log
     val config = buildConfig(state.value)
@@ -396,6 +528,79 @@ object SbtSkillsPlugin extends AutoPlugin {
     log.info("═" * 60)
   }
 
+  private lazy val skillsAddTask = Def.inputTask {
+    val args = spaceDelimited("skill key").parsed
+    val skillKey = args.headOption.getOrElse(throw new MessageOnlyException("Usage: skillsAdd sourceId:category/skill"))
+    val log = streams.value.log
+    val config = buildConfig(state.value)
+    val registry = new SkillReg(new File(config.skillsSourceCacheDir.getParentFile, "registry.json"), log)
+    registry.load().flatMap { data =>
+      val exists = data.skills.exists(skill => s"${skill.sourceId}:${skill.category}/${skill.id}" == skillKey)
+      if (!exists) Failure(new MessageOnlyException(s"Skill '$skillKey' is not registered; run skillsSync first"))
+      else registry.save(data)
+    }.fold(error => throw error, _ => log.info(s"[ADD] Skill already registered: $skillKey"))
+  }
+
+  private lazy val skillsRemoveTask = Def.inputTask {
+    val args = spaceDelimited("skill key").parsed
+    val skillKey = args.headOption.getOrElse(throw new MessageOnlyException("Usage: skillsRemove sourceId:category/skill"))
+    val parts = skillKey.split(":", 2)
+    if (parts.length != 2) throw new MessageOnlyException("Skill must use sourceId:category/skill format")
+    val log = streams.value.log
+    val config = buildConfig(state.value)
+    val registry = new SkillReg(new File(config.skillsSourceCacheDir.getParentFile, "registry.json"), log)
+    registry.load().flatMap(data => registry.save(registry.removeSkill(data, parts(0), parts(1))))
+      .fold(error => throw error, _ => log.info(s"[REMOVE] Removed skill: $skillKey"))
+  }
+
+  private lazy val skillsInfoTask = Def.inputTask {
+    val args = spaceDelimited("skill key").parsed
+    val skillKey = args.headOption.getOrElse(throw new MessageOnlyException("Usage: skillsInfo sourceId:category/skill"))
+    val log = streams.value.log
+    val config = buildConfig(state.value)
+    val registry = new SkillReg(new File(config.skillsSourceCacheDir.getParentFile, "registry.json"), log)
+    registry.load().fold(
+      error => throw error,
+      data => data.skills.find(skill => s"${skill.sourceId}:${skill.category}/${skill.id}" == skillKey) match {
+        case Some(skill) =>
+          log.info(s"[INFO] ${skill.sourceId}:${skill.category}/${skill.id}")
+          log.info(s"[INFO] Path: ${skill.path}")
+          log.info(s"[INFO] Version: ${skill.version}")
+          log.info(s"[INFO] Harnesses: ${skill.effectiveHarnesses.mkString(", ")}")
+          log.info(s"[INFO] Customized: ${skill.customized}")
+        case None => throw new MessageOnlyException(s"Skill '$skillKey' is not registered")
+      }
+    )
+  }
+
+  private lazy val skillsFeedbackTask = Def.inputTask {
+    val args = spaceDelimited("feedback argument").parsed
+    if (args.length < 3) {
+      throw new MessageOnlyException("Usage: skillsFeedback sourceId:category/skill rating comment...")
+    }
+    val parts = args.head.split(":", 2)
+    val rating = scala.util.Try(args(1).toInt).toOption.filter(value => value >= 1 && value <= 5)
+      .getOrElse(throw new MessageOnlyException("Feedback rating must be an integer from 1 to 5"))
+    if (parts.length != 2) throw new MessageOnlyException("Skill must use sourceId:category/skill format")
+    val log = streams.value.log
+    val config = buildConfig(state.value)
+    val collector = MetricsCollectorFactory.create(
+      config.skillsMetricsBackend,
+      config.skillsMetricsFile,
+      config.skillsMetricsGitBranch,
+      config.skillsMetricsGitRemote,
+      config.skillsMetricsGitPush,
+      config.skillsMetricsGitRepository,
+      config.skillsMetricsGitDirectory,
+      config.skillsMetricsGitPath,
+      log
+    )
+    collector.recordFeedback(parts(1), parts(0), rating, args.drop(2).mkString(" ")).fold(
+      error => throw new MessageOnlyException(s"Failed to record feedback: ${error.getMessage}"),
+      _ => log.info(s"[FEEDBACK] Recorded feedback for ${args.head}")
+    )
+  }
+
   private def buildConfig(state: State): SkillsConfig = {
     val extracted = Project.extract(state)
     SkillsConfig(
@@ -410,7 +615,15 @@ object SbtSkillsPlugin extends AutoPlugin {
       skillsAutoGenerate = extracted.get(skillsAutoGenerate),
       skillsMetricsBackend = extracted.get(skillsMetricsBackend),
       skillsMetricsFile = extracted.get(skillsMetricsFile),
-      skillsAutoInitRegistry = extracted.get(skillsAutoInitRegistry)
+      skillsMetricsGitBranch = extracted.get(skillsMetricsGitBranch),
+      skillsMetricsGitRemote = extracted.get(skillsMetricsGitRemote),
+      skillsMetricsGitPush = extracted.get(skillsMetricsGitPush),
+      skillsMetricsGitRepository = extracted.get(skillsMetricsGitRepository),
+      skillsMetricsGitDirectory = extracted.get(skillsMetricsGitDirectory),
+      skillsMetricsGitPath = extracted.get(skillsMetricsGitPath),
+      skillsAutoInitRegistry = extracted.get(skillsAutoInitRegistry),
+      skillsPatchesDir = extracted.get(skillsPatchesDir),
+      skillsVersionOverrides = extracted.get(skillsVersionOverrides)
     )
   }
 

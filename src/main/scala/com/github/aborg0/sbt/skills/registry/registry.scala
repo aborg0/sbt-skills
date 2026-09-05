@@ -120,6 +120,12 @@ class SkillRegistry(registryFile: File, log: Logger) {
   def removeSkillsBySource(data: SkillRegistry.Data, sourceId: String): SkillRegistry.Data = {
     data.copy(skills = data.skills.filterNot(_.sourceId == sourceId))
   }
+
+  def removeSkill(data: SkillRegistry.Data, sourceId: String, skillId: String): SkillRegistry.Data = {
+    data.copy(skills = data.skills.filterNot(skill =>
+      skill.sourceId == sourceId && s"${skill.category}/${skill.id}" == skillId
+    ))
+  }
 }
 
 object SkillRegistry {
